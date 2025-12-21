@@ -57,9 +57,9 @@ export default function Tasks() {
   });
 
   return (
-    <div className="tasks-container">
+    <div className="contacts-container">
       {/* Header */}
-      <div className="d-flex mb-3 align-items-center">
+      <div className="d-flex mb-3 align-items-left">
         <h2 className="mb-0">To Do</h2>
         <Button variant="success" className="ms-auto" onClick={handleOpenModal}>
           +
