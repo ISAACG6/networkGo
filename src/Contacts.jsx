@@ -27,10 +27,15 @@ export default function Contacts({ data }) {
 
     return (
     <div className="contacts-container">
-      <h2 className="mb-3">Contacts</h2>
+    <div className="d-flex">
+        <h2 className="mb-3">Contacts</h2>
+        <button className="btn btn-success ms-auto mb-3">Add Contact</button>
+
+    </div>
+      
 
       {/* Controlled search input */}
-      <Form className="mb-3">
+      <Form className="mb-5">
         <Form.Control
           type="text"
           placeholder="Search by name or company..."
