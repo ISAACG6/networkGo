@@ -55,6 +55,59 @@ body {
   background-color: #fafafa;
 }
 
+.tasks-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.tasks-list {
+  list-style: none;
+  padding: 0;
+}
+
+.task-card-horizontal {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 0;
+  border-bottom: 1px solid #e0e0e0;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.task-card-horizontal.fading {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.task-card-horizontal:last-child {
+  border-bottom: none;
+}
+
+.task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-title {
+  font-size: 16px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.task-due-date {
+  font-size: 13px;
+  color: #666;
+}
+
+.task-card-horizontal .form-check-input {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
 /* Mobile: stack columns vertically */
 @media (max-width: 768px) {
   .three-column-layout {

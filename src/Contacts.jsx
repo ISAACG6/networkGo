@@ -7,16 +7,9 @@ import { Button, Modal } from "react-bootstrap";
 import "./App.css";
 
 export default function Contacts({ data }) {
-  // State for the full contact list
   const [contactList, setContactList] = useState(data?.contacts || []);
-
-  // State for the search input
   const [searchTerm, setSearchTerm] = useState("");
-
-  // State for modal visibility
   const [showModal, setShowModal] = useState(false);
-
-  // State for new contact form
   const [newContact, setNewContact] = useState({
     firstName: "",
     lastName: "",
@@ -146,10 +139,7 @@ export default function Contacts({ data }) {
         </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleAddContact}>
+          <Button variant="success" onClick={handleAddContact}>
             Save changes
           </Button>
         </Modal.Footer>
