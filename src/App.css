@@ -1,0 +1,52 @@
+/* Banner container */
+.banner {
+  display: flex;
+  align-items: center;
+  min-height: 200px;
+  padding: 2rem;
+  background: linear-gradient(135deg, green, #e4e8ef);
+}
+
+/* Left side (text) */
+.banner-left {
+  flex: 1;
+}
+
+.banner-left h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.banner-left p {
+  font-size: 1.2rem;
+  color: #555;
+}
+
+/* Right side (empty space) */
+.banner-right {
+  flex: 1;
+}
+
+.three-column-layout {
+  display: flex;
+  height: 100vh;            /* Fill screen */
+  width: 100%;
+}
+
+.column {
+  flex: 1;                  /* 1/3 width each */
+  overflow-y: auto;         /* Independent scrolling */
+  padding: 1rem;
+  border-right: 1px solid #e0e0e0;
+}
+
+/* Remove border from last column */
+.column:last-child {
+  border-right: none;
+}
+
+/* Optional: subtle hover cue */
+.column:hover {
+  background-color: #fafafa;
+}

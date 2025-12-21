@@ -1,0 +1,44 @@
+{
+  "contacts": [
+    {
+      "id": 1,
+      "firstName": "Alex",
+      "lastName": "Chen",
+      "role": "Software Engineer",
+      "company": "Stripe",
+      "introducedBy": "Professor Nguyen"
+    },
+    {
+      "id": 2,
+      "firstName": "Maya",
+      "lastName": "Johnson",
+      "role": "Product Manager",
+      "company": "Google",
+      "introducedBy": "Career Fair"
+    },
+    {
+      "id": 3,
+      "firstName": "Daniel",
+      "lastName": "Ruiz",
+      "role": "Data Analyst",
+      "company": "City of Seattle",
+      "introducedBy": "Internship Supervisor"
+    },
+    {
+      "id": 4,
+      "firstName": "Priya",
+      "lastName": "Patel",
+      "role": "UX Researcher",
+      "company": "Meta",
+      "introducedBy": "Mutual Friend"
+    },
+    {
+      "id": 5,
+      "firstName": "Jordan",
+      "lastName": "Kim",
+      "role": "Startup Founder",
+      "company": "Early-stage Startup",
+      "introducedBy": "Hackathon"
+    }
+  ]
+}
