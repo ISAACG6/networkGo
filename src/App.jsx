@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import Auth from './Auth';
 import Tasks from "./Tasks";
 import Contacts from "./Contacts";
-import Calendar from "./Meetings.jsx";
+import Meetings from "./Meetings.jsx";
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import reactLogo from './assets/react.svg'

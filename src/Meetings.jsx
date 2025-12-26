@@ -4,7 +4,7 @@ import { database } from "./main.jsx";
 import { ref, set, onValue, remove, update } from "firebase/database";
 import "./App.css";
 
-export default function Calendar({ data, user }) {
+export default function Meetings({ data, user }) {
   const [meetingList, setMeetingList] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
