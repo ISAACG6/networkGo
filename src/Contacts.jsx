@@ -3,7 +3,7 @@ import Card from "react-bootstrap/Card";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
-import { Button } from "react-bootstrap";
+import { Button, Tabs, Tab } from "react-bootstrap";
 import { database } from "./main.jsx";
 import { ref, set, onValue, remove } from "firebase/database";
 import "./App.css";
@@ -21,6 +21,8 @@ export default function Contacts({ user, data, setData }) {
   });
   const [showReferralDropdown, setShowReferralDropdown] = useState(false);
   const [referralSearch, setReferralSearch] = useState("");
+  const [meetingHistory, setMeetingHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState("details");
 
   // Load contacts from Firebase
   useEffect(() => {
@@ -49,11 +51,37 @@ export default function Contacts({ user, data, setData }) {
     return () => unsubscribe();
   }, [user, setData]);
 
+  // Load meeting history for the selected contact
+  useEffect(() => {
+    if (!user || !editingContact) {
+      setMeetingHistory([]);
+      return;
+    }
+
+    const historyRef = ref(database, `users/${user.uid}/contacts/${editingContact.id}/meetingHistory`);
+    const unsubscribe = onValue(historyRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const historyArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        })).sort((a, b) => b.archivedAt - a.archivedAt); // Most recent first
+        setMeetingHistory(historyArray);
+      } else {
+        setMeetingHistory([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, editingContact]);
+
   // Handlers
   const handleOpenAddContact = () => {
     setEditingContact(null);
     setContactForm({ firstName: "", lastName: "", company: "", referredBy: "" });
     setReferralSearch("");
+    setMeetingHistory([]);
+    setActiveTab("details");
     setCurrentView("edit");
   };
 
@@ -75,6 +103,7 @@ export default function Contacts({ user, data, setData }) {
     } else {
       setReferralSearch("");
     }
+    setActiveTab("details");
     setCurrentView("edit");
   };
 
@@ -84,6 +113,8 @@ export default function Contacts({ user, data, setData }) {
     setContactForm({ firstName: "", lastName: "", company: "", referredBy: "" });
     setReferralSearch("");
     setShowReferralDropdown(false);
+    setMeetingHistory([]);
+    setActiveTab("details");
   };
 
   const handleContactChange = (e) => {
@@ -107,6 +138,7 @@ export default function Contacts({ user, data, setData }) {
           lastName: contactForm.lastName,
           company: contactForm.company,
           referredBy: contactForm.referredBy,
+          meetingHistory: editingContact.meetingHistory || {},
           updatedAt: Date.now(),
         });
       } else {
@@ -199,122 +231,163 @@ export default function Contacts({ user, data, setData }) {
           </Button>
         </div>
 
-        <div className="contact-edit-form">
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>First Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="firstName"
-                value={contactForm.firstName}
-                onChange={handleContactChange}
-              />
-            </Form.Group>
+        <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
+          <Tab eventKey="details" title="Details">
+            <div className="contact-edit-form">
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>First Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="firstName"
+                    value={contactForm.firstName}
+                    onChange={handleContactChange}
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Last Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="lastName"
-                value={contactForm.lastName}
-                onChange={handleContactChange}
-              />
-            </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Last Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="lastName"
+                    value={contactForm.lastName}
+                    onChange={handleContactChange}
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Company</Form.Label>
-              <Form.Control
-                type="text"
-                name="company"
-                value={contactForm.company}
-                onChange={handleContactChange}
-              />
-            </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Company</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="company"
+                    value={contactForm.company}
+                    onChange={handleContactChange}
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Referred By</Form.Label>
-              <div className="referral-dropdown-container">
-                <Form.Control
-                  type="text"
-                  placeholder="Search contacts or type a name..."
-                  value={referralSearch}
-                  onChange={handleReferralSearchChange}
-                  onFocus={() => setShowReferralDropdown(true)}
-                  onBlur={handleReferralBlur}
-                />
-                {referralSearch && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={handleClearReferral}
-                    className="clear-referral-btn"
-                  >
-                    ×
-                  </Button>
-                )}
-                {showReferralDropdown && availableReferrals.length > 0 && (
-                  <div className="referral-dropdown">
-                    {filteredReferrals.length > 0 ? (
-                      filteredReferrals.map((contact) => (
-                        <div
-                          key={contact.id}
-                          onClick={() => handleSelectReferral(contact)}
-                          className={`referral-dropdown-item ${contactForm.referredBy === contact.id ? 'selected' : ''}`}
-                        >
-                          <div className="referral-name">
-                            {contact.firstName} {contact.lastName}
-                          </div>
-                          {contact.company && (
-                            <div className="referral-company">
-                              {contact.company}
+                <Form.Group className="mb-3">
+                  <Form.Label>Referred By</Form.Label>
+                  <div className="referral-dropdown-container">
+                    <Form.Control
+                      type="text"
+                      placeholder="Search contacts or type a name..."
+                      value={referralSearch}
+                      onChange={handleReferralSearchChange}
+                      onFocus={() => setShowReferralDropdown(true)}
+                      onBlur={handleReferralBlur}
+                    />
+                    {referralSearch && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={handleClearReferral}
+                        className="clear-referral-btn"
+                      >
+                        ×
+                      </Button>
+                    )}
+                    {showReferralDropdown && availableReferrals.length > 0 && (
+                      <div className="referral-dropdown">
+                        {filteredReferrals.length > 0 ? (
+                          filteredReferrals.map((contact) => (
+                            <div
+                              key={contact.id}
+                              onClick={() => handleSelectReferral(contact)}
+                              className={`referral-dropdown-item ${contactForm.referredBy === contact.id ? 'selected' : ''}`}
+                            >
+                              <div className="referral-name">
+                                {contact.firstName} {contact.lastName}
+                              </div>
+                              {contact.company && (
+                                <div className="referral-company">
+                                  {contact.company}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="referral-dropdown-empty">
-                        No matching contacts. You can still save "{referralSearch}" as a custom referral.
+                          ))
+                        ) : (
+                          <div className="referral-dropdown-empty">
+                            No matching contacts. You can still save "{referralSearch}" as a custom referral.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  {!selectedReferral && (
+                    <Form.Text className="text-muted">
+                      Select from your contacts or type a custom name (e.g., "Dad", "LinkedIn")
+                    </Form.Text>
+                  )}
+                  
+                  {selectedReferral && (
+                    <div className="mt-3">
+                      <Card 
+                        className="contact-card-horizontal"
+                        onClick={() => handleClickReferralCard(selectedReferral)}
+                      >
+                        <div className="contact-info">
+                          <div className="contact-name">
+                            {selectedReferral.firstName} {selectedReferral.lastName[0]}.
+                          </div>
+                          <div className="contact-company">{selectedReferral.company}</div>
+                        </div>
+                      </Card>
+                      <Form.Text className="text-muted">
+                        Click to view this contact's profile
+                      </Form.Text>
+                    </div>
+                  )}
+                </Form.Group>
+                
+                <div className="d-flex gap-2 mt-4">
+                  <Button variant="success" onClick={handleSaveContact}>
+                    Save Contact
+                  </Button>
+                  <Button variant="outline-secondary" onClick={handleCloseEdit}>
+                    Cancel
+                  </Button>
+                </div>
+              </Form>
+            </div>
+          </Tab>
+
+          {editingContact && (
+            <Tab eventKey="history" title={`Meeting History (${meetingHistory.length})`}>
+              <div className="meeting-history-container">
+                {meetingHistory.length === 0 ? (
+                  <div className="text-center text-muted mt-4">
+                    No meeting history available.
+                  </div>
+                ) : (
+                  <div className="meeting-history-list">
+                    {meetingHistory.map((meeting) => (
+                      <Card key={meeting.id} className="mb-3">
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                              <h5 className="mb-1">{meeting.topic}</h5>
+                              <div className="text-muted" style={{ fontSize: "0.9rem" }}>
+                                {new Date(meeting.date).toLocaleDateString()} at {meeting.time}
+                              </div>
+                            </div>
+                          </div>
+                          {meeting.notes && (
+                            <div className="mt-3">
+                              <strong>Notes:</strong>
+                              <div className="meeting-notes mt-2" style={{ whiteSpace: "pre-wrap" }}>
+                                {meeting.notes}
+                              </div>
+                            </div>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </div>
-              {!selectedReferral && (
-                <Form.Text className="text-muted">
-                  Select from your contacts or type a custom name (e.g., "Dad", "LinkedIn")
-                </Form.Text>
-              )}
-              
-              {selectedReferral && (
-                <div className="mt-3">
-                  <Card 
-                    className="contact-card-horizontal"
-                    onClick={() => handleClickReferralCard(selectedReferral)}
-                  >
-                    <div className="contact-info">
-                      <div className="contact-name">
-                        {selectedReferral.firstName} {selectedReferral.lastName[0]}.
-                      </div>
-                      <div className="contact-company">{selectedReferral.company}</div>
-                    </div>
-                  </Card>
-                  <Form.Text className="text-muted">
-                    Click to view this contact's profile
-                  </Form.Text>
-                </div>
-              )}
-            </Form.Group>
-            
-            <div className="d-flex gap-2 mt-4">
-              <Button variant="success" onClick={handleSaveContact}>
-                Save Contact
-              </Button>
-              <Button variant="outline-secondary" onClick={handleCloseEdit}>
-                Cancel
-              </Button>
-            </div>
-          </Form>
-        </div>
+            </Tab>
+          )}
+        </Tabs>
       </div>
     );
   }

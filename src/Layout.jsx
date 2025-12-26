@@ -1,5 +1,5 @@
 import Contacts from "./Contacts";
-import Calendar from "./Calendar";
+import Meetings from "./Meetings";
 import Tasks from "./Tasks";
 import "./App.css";
 import React, { useState, useEffect } from "react";
@@ -17,7 +17,7 @@ export default function Layout({ user }) {
         <Tasks user={user} data={data} />
       </div>
       <div className="column">
-        <Calendar user={user} />
+        <Meetings user={user} data={data} />
       </div>
     </div>
   );
