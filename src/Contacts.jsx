@@ -1,24 +1,53 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card from "react-bootstrap/Card";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
 import { Button } from "react-bootstrap";
+import { database } from "./main.jsx";
+import { ref, set, onValue, remove } from "firebase/database";
 import "./App.css";
 
-export default function Contacts({ data }) {
-  const [contactList, setContactList] = useState(data?.contacts || []);
+export default function Contacts({ user, data, setData }) {
+  const [contactList, setContactList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentView, setCurrentView] = useState("list"); // "list" or "edit"
+  const [currentView, setCurrentView] = useState("list");
   const [editingContact, setEditingContact] = useState(null);
   const [contactForm, setContactForm] = useState({
     firstName: "",
     lastName: "",
     company: "",
-    referredBy: "", // will store contact id or custom text
+    referredBy: "",
   });
   const [showReferralDropdown, setShowReferralDropdown] = useState(false);
   const [referralSearch, setReferralSearch] = useState("");
+
+  // Load contacts from Firebase
+  useEffect(() => {
+    if (!user) return;
+
+    const contactsRef = ref(database, `users/${user.uid}/contacts`);
+    const unsubscribe = onValue(contactsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const contactsArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setContactList(contactsArray);
+        if (setData) {
+          setData({ contacts: contactsArray });
+        }
+      } else {
+        setContactList([]);
+        if (setData) {
+          setData({ contacts: [] });
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, setData]);
 
   // Handlers
   const handleOpenAddContact = () => {
@@ -36,7 +65,6 @@ export default function Contacts({ data }) {
       company: contact.company,
       referredBy: contact.referredBy || "",
     });
-    // Set the search field to show the referral
     if (contact.referredBy) {
       const referredContact = contactList.find((c) => c.id === contact.referredBy);
       setReferralSearch(
@@ -65,22 +93,38 @@ export default function Contacts({ data }) {
     });
   };
 
-  const handleSaveContact = () => {
-    if (editingContact) {
-      // Update existing contact
-      setContactList(
-        contactList.map((c) =>
-          c.id === editingContact.id ? { ...c, ...contactForm } : c
-        )
-      );
-    } else {
-      // Add new contact
-      const id = contactList.length > 0 
-        ? Math.max(...contactList.map(c => c.id)) + 1 
-        : 1;
-      setContactList([...contactList, { id, ...contactForm }]);
+  const handleSaveContact = async () => {
+    if (!user || contactForm.firstName.trim() === "" || contactForm.lastName.trim() === "") {
+      alert("Please fill in first and last name");
+      return;
     }
-    handleCloseEdit();
+
+    try {
+      if (editingContact) {
+        const contactRef = ref(database, `users/${user.uid}/contacts/${editingContact.id}`);
+        await set(contactRef, {
+          firstName: contactForm.firstName,
+          lastName: contactForm.lastName,
+          company: contactForm.company,
+          referredBy: contactForm.referredBy,
+          updatedAt: Date.now(),
+        });
+      } else {
+        const contactId = Date.now().toString();
+        const contactRef = ref(database, `users/${user.uid}/contacts/${contactId}`);
+        await set(contactRef, {
+          firstName: contactForm.firstName,
+          lastName: contactForm.lastName,
+          company: contactForm.company,
+          referredBy: contactForm.referredBy,
+          createdAt: Date.now(),
+        });
+      }
+      handleCloseEdit();
+    } catch (error) {
+      console.error("Error saving contact:", error);
+      alert("Failed to save contact. Please try again.");
+    }
   };
 
   const handleSelectReferral = (contact) => {
@@ -97,28 +141,24 @@ export default function Contacts({ data }) {
   const handleReferralSearchChange = (e) => {
     const value = e.target.value;
     setReferralSearch(value);
-    setContactForm({ ...contactForm, referredBy: value }); // Save custom text
+    setContactForm({ ...contactForm, referredBy: value });
     setShowReferralDropdown(true);
   };
 
   const handleReferralBlur = () => {
-    // Delay to allow click on dropdown item
     setTimeout(() => {
       setShowReferralDropdown(false);
     }, 200);
   };
 
   const handleClickReferralCard = (contact) => {
-    // Navigate to the referral's profile
     handleOpenEditContact(contact);
   };
 
-  // Get available contacts for referral (exclude current contact being edited)
   const availableReferrals = contactList.filter(
     (c) => c.id !== editingContact?.id
   );
 
-  // Filter referrals based on search
   const filteredReferrals = referralSearch.trim() === ""
     ? availableReferrals
     : availableReferrals.filter((contact) => {
@@ -128,19 +168,14 @@ export default function Contacts({ data }) {
         return fullName.includes(term) || company.includes(term);
       });
 
-  // Get the selected referral contact
   const selectedReferral = contactForm.referredBy
     ? contactList.find((c) => c.id === contactForm.referredBy)
     : null;
-
-  // Check if referredBy is a contact ID (number) or custom text (string)
-  const isReferralContact = typeof contactForm.referredBy === 'number';
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value || "");
   };
 
-  // Filter contacts based on search term
   const filteredContacts =
     searchTerm.trim() === ""
       ? contactList
@@ -198,7 +233,7 @@ export default function Contacts({ data }) {
 
             <Form.Group className="mb-3">
               <Form.Label>Referred By</Form.Label>
-              <div style={{ position: "relative" }}>
+              <div className="referral-dropdown-container">
                 <Form.Control
                   type="text"
                   placeholder="Search contacts or type a name..."
@@ -212,81 +247,32 @@ export default function Contacts({ data }) {
                     variant="link"
                     size="sm"
                     onClick={handleClearReferral}
-                    style={{
-                      position: "absolute",
-                      right: "5px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      padding: "0 8px",
-                      textDecoration: "none",
-                    }}
+                    className="clear-referral-btn"
                   >
                     ×
                   </Button>
                 )}
                 {showReferralDropdown && availableReferrals.length > 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: 0,
-                      right: 0,
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      backgroundColor: "white",
-                      border: "1px solid #dee2e6",
-                      borderRadius: "0.375rem",
-                      marginTop: "4px",
-                      zIndex: 1000,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    }}
-                  >
+                  <div className="referral-dropdown">
                     {filteredReferrals.length > 0 ? (
                       filteredReferrals.map((contact) => (
                         <div
                           key={contact.id}
                           onClick={() => handleSelectReferral(contact)}
-                          style={{
-                            padding: "8px 12px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #f0f0f0",
-                            backgroundColor:
-                              contactForm.referredBy === contact.id
-                                ? "#e7f3ff"
-                                : "white",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (contactForm.referredBy !== contact.id) {
-                              e.target.style.backgroundColor = "#f8f9fa";
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (contactForm.referredBy !== contact.id) {
-                              e.target.style.backgroundColor = "white";
-                            }
-                          }}
+                          className={`referral-dropdown-item ${contactForm.referredBy === contact.id ? 'selected' : ''}`}
                         >
-                          <div style={{ fontWeight: "500" }}>
+                          <div className="referral-name">
                             {contact.firstName} {contact.lastName}
                           </div>
                           {contact.company && (
-                            <div
-                              style={{ fontSize: "0.875rem", color: "#6c757d" }}
-                            >
+                            <div className="referral-company">
                               {contact.company}
                             </div>
                           )}
                         </div>
                       ))
                     ) : (
-                      <div
-                        style={{
-                          padding: "12px",
-                          textAlign: "center",
-                          color: "#6c757d",
-                          fontSize: "0.875rem",
-                        }}
-                      >
+                      <div className="referral-dropdown-empty">
                         No matching contacts. You can still save "{referralSearch}" as a custom referral.
                       </div>
                     )}
@@ -299,13 +285,11 @@ export default function Contacts({ data }) {
                 </Form.Text>
               )}
               
-              {/* Show referral contact card if a contact from database is selected */}
               {selectedReferral && (
                 <div className="mt-3">
                   <Card 
                     className="contact-card-horizontal"
                     onClick={() => handleClickReferralCard(selectedReferral)}
-                    style={{ cursor: "pointer", width: "100%", maxWidth: "100%" }}
                   >
                     <div className="contact-info">
                       <div className="contact-name">
@@ -320,8 +304,6 @@ export default function Contacts({ data }) {
                 </div>
               )}
             </Form.Group>
-
-            {/* More fields can be added here later */}
             
             <div className="d-flex gap-2 mt-4">
               <Button variant="success" onClick={handleSaveContact}>
@@ -340,7 +322,6 @@ export default function Contacts({ data }) {
   // Render list view
   return (
     <div className="contacts-container">
-      {/* Header */}
       <div className="d-flex mb-3 align-items-center">
         <h2 className="mb-0">Contacts</h2>
         <Button variant="success" className="ms-auto" onClick={handleOpenAddContact}>
@@ -348,7 +329,6 @@ export default function Contacts({ data }) {
         </Button>
       </div>
 
-      {/* Search input */}
       <Form className="mb-3">
         <Form.Control
           type="text"
@@ -359,14 +339,12 @@ export default function Contacts({ data }) {
         />
       </Form>
 
-      {/* Contact cards */}
       <Row className="contacts-list">
         {filteredContacts.map((contact) => (
           <Col key={contact.id} xs={12} className="d-flex justify-content-center mb-3">
             <Card 
               className="contact-card-horizontal"
               onClick={() => handleOpenEditContact(contact)}
-              style={{ cursor: "pointer" }}
             >
               <div className="contact-info">
                 <div className="contact-name">
@@ -379,13 +357,13 @@ export default function Contacts({ data }) {
         ))}
 
         {contactList.length === 0 && (
-          <div className="text-center text-muted" style={{ width: "100%" }}>
+          <div className="text-center text-muted">
             No contacts available.
           </div>
         )}
 
         {filteredContacts.length === 0 && contactList.length > 0 && (
-          <div className="text-center text-muted" style={{ width: "100%" }}>
+          <div className="text-center text-muted">
             No contacts match your search.
           </div>
         )}
